@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:title="ListView" android:id="@+id/list_view">
+        <menu>
+            <item android:title="1" android:id="@+id/list_view_1"></item>
+            <item android:title="2" android:id="@+id/list_view_2"></item>
+        </menu>
+    </item>
+    <item android:title="GridView" android:id="@+id/grid_view">
+        <menu>
+            <item android:title="1" android:id="@+id/grid_view_1"></item>
+            <item android:title="2" android:id="@+id/grid_view_2"></item>
+        </menu>
+    </item>
+    <item android:title="StaggerView" android:id="@+id/stagger_view">
+        <menu>
+            <item android:title="1" android:id="@+id/stagger_view_1"></item>
+            <item android:title="2" android:id="@+id/stagger_view_2"></item>
+        </menu>
+    </item>
+</menu>
