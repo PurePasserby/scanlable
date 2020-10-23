@@ -146,4 +146,8 @@ class MainActivity : AppCompatActivity() {
         super.onStop()
         UHfData.UHfGetData.CloseUHf()
     }
+
+    fun test_commit(){
+
+    }
 }
