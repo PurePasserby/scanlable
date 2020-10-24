@@ -1,3 +1,9 @@
 <resources>
     <string name="app_name">scanlable</string>
+
+    <string-array name="men_s">
+        <item>单标签</item>
+        <item>多标签</item>
+        <item>自动</item>
+    </string-array>
 </resources>
