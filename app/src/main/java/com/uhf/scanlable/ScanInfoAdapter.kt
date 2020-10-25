@@ -10,22 +10,21 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.recyclerview.widget.RecyclerView
 
-interface OnClickCallback{
-    fun onClick(view: View,position: Int)
+interface OnItemClickListener{
+    fun onItemClick(view:View,position:Int)
 }
 
-class ScanInfoAdapter(private val context:Context, private val data:List<UHfData.InventoryTagMap>,onClickCallback:OnClickCallback)
+class ScanInfoAdapter(context:Context, private val data:List<UHfData.InventoryTagMap>, onItemClickListener:OnItemClickListener)
     :RecyclerView.Adapter<ScanInfoAdapter.ViewHolder>(){
 
     private var mContext=context
     private var mData=data
-    private var mOnClickCallback=onClickCallback
+    private var mOnItemClickListener=onItemClickListener
 
     override fun getItemCount(): Int = data.size
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder{
         val view:View= LayoutInflater.from(mContext).inflate(R.layout.scan_info,parent,false)
-        view.setOnClickListener(ClickListener())
         return ViewHolder(view)
     }
 
@@ -34,19 +33,23 @@ class ScanInfoAdapter(private val context:Context, private val data:List<UHfData
         var tv_epc:TextView=view.findViewById(R.id.tv_epc)
         var tv_times:TextView=view.findViewById(R.id.tv_times)
         var tv_rssi:TextView=view.findViewById(R.id.tv_rssi)
+
+        fun initialize(item:UHfData.InventoryTagMap,action:OnItemClickListener){
+            tv_epc.text=item.strEPC
+            tv_times.text=item.nReadCount.toString()
+            tv_rssi.text=item.strRSSI
+
+            itemView.setOnClickListener{
+                action.onItemClick(itemView,adapterPosition)
+            }
+        }
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        holder?.tv_id?.text = mData[position].btAntId.toString()
-        holder?.tv_epc?.text=mData[position].strEPC
-        holder?.tv_times?.text=mData[position].nReadCount.toString()
-        holder?.tv_rssi?.text=mData[position].strRSSI
+        holder?.tv_id?.text = position.toString()
+
+        holder.initialize(mData[position],mOnItemClickListener)
     }
 
-    inner class ClickListener:View.OnClickListener{
-        override fun onClick(v: View?) {
-            mOnClickCallback.onClick(v!!,v.tag as Int)
-        }
-    }
 
 }

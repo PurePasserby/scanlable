@@ -23,7 +23,7 @@ import kotlin.concurrent.timerTask
 const val serial:String="/dev/ttyMT1"  //串口名称
 const val tty_speed:Int=57600          //窗口通讯速率
 
-class MainActivity : AppCompatActivity() , View.OnClickListener{
+class MainActivity : AppCompatActivity() , OnItemClickListener,View.OnClickListener{
 
     private val mainActivity:MainActivity=this
 
@@ -35,8 +35,7 @@ class MainActivity : AppCompatActivity() , View.OnClickListener{
 
     private lateinit var viewAdapter: RecyclerView.Adapter<*>
     private lateinit var viewManager: RecyclerView.LayoutManager
-    private var data:List<UHfData.InventoryTagMap> = emptyList()
-
+    private var data: List<UHfData.InventoryTagMap> =listOf()
     private lateinit var timer:Timer
     private var isCaneled:Boolean=true
     private val SCAN_INTERVAL:Long = 5
@@ -53,48 +52,66 @@ class MainActivity : AppCompatActivity() , View.OnClickListener{
     private val mHandler:Handler=object:Handler(Looper.getMainLooper()){
         override fun handleMessage(msg: Message) {
             super.handleMessage(msg)
-            Looper.prepare()
+            if(Looper.myLooper()==null) {
+                Looper.prepare()
+            }
             when (msg?.obj) {
                 "0" -> Toast.makeText(mainActivity, "Port Connect Success", Toast.LENGTH_LONG).show()
                 else -> Toast.makeText(mainActivity, "Port Connect Failed", Toast.LENGTH_LONG).show()
-            }
-            if(isCaneled)
-                return
-            when(msg?.what){
-                MSG_UPDATE_LISTVIEW->{
-                    data=UHfData.lsTagList
-                    viewAdapter?:let {
-                        viewAdapter=ScanInfoAdapter(mainActivity,data,ClickCallback())
-                        infoView.adapter=viewAdapter
-                    }?.let { infoView.adapter=viewAdapter }
-                    tv_count.text = "数量："+viewAdapter.itemCount
-                    viewAdapter.notifyDataSetChanged()
-                    if(UHfData.mIsNew){
-                        Thread{
-                            //to do play sound
-                        }
-                        UHfData.mIsNew=false
-                    }
-                }
-                else->{}
             }
             Looper.loop()
         }
     }
 
+    private val cHandler:Handler=object:Handler(Looper.getMainLooper()) {
+        override fun handleMessage(msg: Message) {
+            super.handleMessage(msg)
+            if(Looper.myLooper()==null) {
+                Looper.prepare()
+            }
+            if(isCaneled)
+                return
+            when(msg?.what) {
+                MSG_UPDATE_LISTVIEW -> {
+                    Log.d("chenye","get data")
+                    data = UHfData.lsTagList
+                    if (viewAdapter.itemCount == 0) {
+                        viewAdapter = ScanInfoAdapter(mainActivity, data, mainActivity)
+                    }
+                    infoView.adapter = viewAdapter
+                    tv_count.text = "数量：" + viewAdapter.itemCount
+                    viewAdapter.notifyDataSetChanged()
+                    if (UHfData.mIsNew) {
+                        Thread {
+                            //to do play sound
+                        }
+                        UHfData.mIsNew = false
+                    }
+                }
+                else -> {
+                }
+            }
+            Looper.loop()
+        }
+    }
+
+    override fun onItemClick(view:View,position: Int) {
+        var tv_epc:TextView=view.findViewById(R.id.tv_epc)
+        Toast.makeText(this,tv_epc.text.toString(),Toast.LENGTH_SHORT).show()
+    }
+
     override fun onClick(v: View?) {
         when(v?.id){
             R.id.btn_scan->{
-                Log.d("chenye","btn_scan")
                 try{
-                    if(timer==null){
-                        if(viewAdapter!=null) {
+                    if(isCaneled){
+                        if(viewAdapter.itemCount>0) {
                             tv_count.text="数量：0"
                             UHfData.lsTagList.clear()
                             UHfData.dtIndexMap.clear()
                             viewAdapter.notifyDataSetChanged()
-                            mHandler.removeMessages(MSG_UPDATE_LISTVIEW)
-                            mHandler.sendEmptyMessage(MSG_UPDATE_LISTVIEW)
+                            cHandler.removeMessages(MSG_UPDATE_LISTVIEW)
+                            cHandler.sendEmptyMessage(MSG_UPDATE_LISTVIEW)
                         }
                         selectedEd=sp_mem.selectedItemPosition
                         if(cb_tid.isChecked)
@@ -111,11 +128,18 @@ class MainActivity : AppCompatActivity() , View.OnClickListener{
                                 return@timerTask
                             Scanflag=true
                             UHfData.Inventory_6c(selectedEd,TidFlag)
-                            mHandler.removeMessages(MSG_UPDATE_LISTVIEW)
-                            mHandler.sendEmptyMessage(MSG_UPDATE_LISTVIEW)
+                            cHandler.removeMessages(MSG_UPDATE_LISTVIEW)
+                            cHandler.sendEmptyMessage(MSG_UPDATE_LISTVIEW)
                             Scanflag=false
                         },SCAN_INTERVAL)
                         btn_Scan.text="停止"
+                    }
+                    else{
+                        isCaneled=true;
+                        if(this::timer.isInitialized) {
+                            timer.cancel()
+                            btn_Scan.text="扫描"
+                        }
                     }
                 }catch (e:Exception){
                     Log.d("chenye",e.message.toString())
@@ -125,8 +149,11 @@ class MainActivity : AppCompatActivity() , View.OnClickListener{
         }
     }
 
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        UHfData(this)
         setContentView(R.layout.activity_main)
 
         initView()
@@ -134,8 +161,11 @@ class MainActivity : AppCompatActivity() , View.OnClickListener{
     }
 
     private inline fun initView(){
-        sp_mem = findViewById(R.id.sp_mem)
+
         tv_count=findViewById(R.id.tv_count)
+        tv_count.text="数量：0"
+
+        sp_mem = findViewById(R.id.sp_mem)
         cb_tid=findViewById(R.id.cb_tid)
 
         btn_Scan=findViewById(R.id.btn_scan)
@@ -144,7 +174,7 @@ class MainActivity : AppCompatActivity() , View.OnClickListener{
         infoView = findViewById(R.id.info_view)
         viewManager = LinearLayoutManager(this)
         infoView.layoutManager=viewManager
-        //viewAdapter = ScanInfoAdapter(this, data,ClickCallback())
+        viewAdapter = ScanInfoAdapter(this, data,mainActivity)
         infoView.adapter=viewAdapter
     }
 
@@ -165,12 +195,13 @@ class MainActivity : AppCompatActivity() , View.OnClickListener{
         }
     }
 
-    inner class ClickCallback:OnClickCallback{
-        override fun onClick(view: View, position: Int) {
-            val tv_epc:TextView=view.findViewById(R.id.tv_epc);
-            Toast.makeText(this@MainActivity,tv_epc.text,Toast.LENGTH_SHORT)
-        }
-    }
+//    inner class ClickCallback:OnClickCallback{
+//        override fun onClick(view: View, position: Map<Int,Any?>) {
+//            Log.d("chenye","click item")
+//            val tv_epc:TextView=view.findViewById(R.id.tv_epc)
+//            Toast.makeText(this@MainActivity,tv_epc.text,Toast.LENGTH_SHORT)
+//        }
+//    }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
         val inflater: MenuInflater = menuInflater
