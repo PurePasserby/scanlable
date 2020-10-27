@@ -1,4 +1,4 @@
-package com.uhf.scanlable
+package com.uhf.scanlable_test
 
 import org.junit.Test
 

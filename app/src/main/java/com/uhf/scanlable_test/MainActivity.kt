@@ -1,8 +1,9 @@
 /*
 * Create By Chen Ye
 * */
-package com.uhf.scanlable
+package com.uhf.scanlable_test
 
+import android.content.Intent
 import android.os.*
 import android.util.Log
 import android.view.Menu
@@ -13,6 +14,8 @@ import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.uhf.scanlable.R
+import com.uhf.scanlable.UHfData
 import java.util.*
 import kotlin.concurrent.timerTask
 
@@ -26,7 +29,7 @@ const val MSG_UPDATE_LISTVIEW = 2
 
 class MainActivity : AppCompatActivity() , OnItemClickListener,View.OnClickListener{
 
-    private val mainActivity:MainActivity=this
+    private val mainActivity: MainActivity =this
 
     private lateinit var sp_mem:Spinner
     private lateinit var tv_count:TextView
@@ -46,6 +49,7 @@ class MainActivity : AppCompatActivity() , OnItemClickListener,View.OnClickListe
     private var selectedEd = 0
     private var TidFlag = 0
     private var AntIndex = 0
+    private var mode:String=""
 
     private var startTime:Long = 0
     private var keyUpFlag:Boolean=true
@@ -55,7 +59,11 @@ class MainActivity : AppCompatActivity() , OnItemClickListener,View.OnClickListe
     //On RecycleView Item Click
     override fun onItemClick(view: View, position: Int) {
         var tv_epc:TextView=view.findViewById(R.id.tv_epc)
-        Toast.makeText(this, tv_epc.text.toString(), Toast.LENGTH_SHORT).show()
+        var epc = tv_epc.text.toString()
+        var intent:Intent= Intent(mainActivity, ReadWriteActivity::class.java)
+        intent.putExtra("mode",mode)
+        UHfData.setuhf_id(epc)
+        startActivity(intent)
     }
 
     //On UI Click
@@ -63,7 +71,7 @@ class MainActivity : AppCompatActivity() , OnItemClickListener,View.OnClickListe
         when(v?.id){
             R.id.btn_scan -> {
                 Timer().schedule(timerTask {
-                    Log.d("chenye","test")
+                    //Log.d("chenye","test")
                 },5)
                 try {
                     if (isCaneled) {
@@ -120,7 +128,7 @@ class MainActivity : AppCompatActivity() , OnItemClickListener,View.OnClickListe
         mHandler=object:Handler() {
             override fun handleMessage(msg: Message) {
                 super.handleMessage(msg)
-                Log.d("chenye","a")
+                //Log.d("chenye","a")
                 when(msg?.what) {
                     MSG_UPDATE_LISTVIEW -> {
                         if(isCaneled)
@@ -137,10 +145,10 @@ class MainActivity : AppCompatActivity() , OnItemClickListener,View.OnClickListe
                             UHfData.mIsNew = false
                         }
                     }
-                    MESSAGE_SUCCESS->{
+                    MESSAGE_SUCCESS ->{
                         Toast.makeText(mainActivity, "Port Connect Success", Toast.LENGTH_LONG).show()
                     }
-                    MESSAGE_FAIL->
+                    MESSAGE_FAIL ->
                         Toast.makeText(mainActivity, "Port Connect Failed", Toast.LENGTH_LONG).show()
                     else -> {
                     }
