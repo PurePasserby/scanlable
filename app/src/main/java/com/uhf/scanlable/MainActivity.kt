@@ -3,10 +3,7 @@
 * */
 package com.uhf.scanlable
 
-import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
-import android.os.Message
+import android.os.*
 import android.util.Log
 import android.view.Menu
 import android.view.MenuInflater
@@ -17,11 +14,15 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import java.util.*
-import kotlin.concurrent.schedule
 import kotlin.concurrent.timerTask
 
 const val serial:String="/dev/ttyMT1"  //串口名称
 const val tty_speed:Int=57600          //窗口通讯速率
+
+const val MESSAGE_SUCCESS = 0
+const val MESSAGE_FAIL = 1
+const val MSG_UPDATE_LISTVIEW = 2
+
 
 class MainActivity : AppCompatActivity() , OnItemClickListener,View.OnClickListener{
 
@@ -39,7 +40,7 @@ class MainActivity : AppCompatActivity() , OnItemClickListener,View.OnClickListe
     private lateinit var timer:Timer
     private var isCaneled:Boolean=true
     private val SCAN_INTERVAL:Long = 5
-    private val MSG_UPDATE_LISTVIEW = 0
+
     private val MODE_18000 = 1
     private var Scanflag = false
     private var selectedEd = 0
@@ -49,107 +50,65 @@ class MainActivity : AppCompatActivity() , OnItemClickListener,View.OnClickListe
     private var startTime:Long = 0
     private var keyUpFlag:Boolean=true
 
-    private val mHandler:Handler=object:Handler(Looper.getMainLooper()){
-        override fun handleMessage(msg: Message) {
-            super.handleMessage(msg)
-            if(Looper.myLooper()==null) {
-                Looper.prepare()
-            }
-            when (msg?.obj) {
-                "0" -> Toast.makeText(mainActivity, "Port Connect Success", Toast.LENGTH_LONG).show()
-                else -> Toast.makeText(mainActivity, "Port Connect Failed", Toast.LENGTH_LONG).show()
-            }
-            Looper.loop()
-        }
-    }
+    private lateinit var  mHandler:Handler
 
-    private val cHandler:Handler=object:Handler(Looper.getMainLooper()) {
-        override fun handleMessage(msg: Message) {
-            super.handleMessage(msg)
-            if(Looper.myLooper()==null) {
-                Looper.prepare()
-            }
-            if(isCaneled)
-                return
-            when(msg?.what) {
-                MSG_UPDATE_LISTVIEW -> {
-                    Log.d("chenye","get data")
-                    data = UHfData.lsTagList
-                    if (viewAdapter.itemCount == 0) {
-                        viewAdapter = ScanInfoAdapter(mainActivity, data, mainActivity)
-                    }
-                    infoView.adapter = viewAdapter
-                    tv_count.text = "数量：" + viewAdapter.itemCount
-                    viewAdapter.notifyDataSetChanged()
-                    if (UHfData.mIsNew) {
-                        Thread {
-                            //to do play sound
-                        }
-                        UHfData.mIsNew = false
-                    }
-                }
-                else -> {
-                }
-            }
-            Looper.loop()
-        }
-    }
-
-    override fun onItemClick(view:View,position: Int) {
+    //On RecycleView Item Click
+    override fun onItemClick(view: View, position: Int) {
         var tv_epc:TextView=view.findViewById(R.id.tv_epc)
-        Toast.makeText(this,tv_epc.text.toString(),Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, tv_epc.text.toString(), Toast.LENGTH_SHORT).show()
     }
 
+    //On UI Click
     override fun onClick(v: View?) {
         when(v?.id){
-            R.id.btn_scan->{
-                try{
-                    if(isCaneled){
-                        if(viewAdapter.itemCount>0) {
-                            tv_count.text="数量：0"
+            R.id.btn_scan -> {
+                Timer().schedule(timerTask {
+                    Log.d("chenye","test")
+                },5)
+                try {
+                    if (isCaneled) {
+                        if (viewAdapter.itemCount > 0) {
+                            tv_count.text = "数量：0"
                             UHfData.lsTagList.clear()
                             UHfData.dtIndexMap.clear()
                             viewAdapter.notifyDataSetChanged()
-                            cHandler.removeMessages(MSG_UPDATE_LISTVIEW)
-                            cHandler.sendEmptyMessage(MSG_UPDATE_LISTVIEW)
+                            mHandler.removeMessages(MSG_UPDATE_LISTVIEW)
+                            mHandler.sendEmptyMessage(MSG_UPDATE_LISTVIEW)
                         }
-                        selectedEd=sp_mem.selectedItemPosition
-                        if(cb_tid.isChecked)
-                            TidFlag=1
+                        selectedEd = sp_mem.selectedItemPosition
+                        if (cb_tid.isChecked)
+                            TidFlag = 1
                         else
-                            TidFlag=0
-                        if(selectedEd==2)
-                            selectedEd=255
-                        AntIndex=0
-                        isCaneled=false
-                        timer=Timer()
-                        timer.schedule(timerTask(){
-                            if(Scanflag)
+                            TidFlag = 0
+                        if (selectedEd == 2)
+                            selectedEd = 255
+                        AntIndex = 0
+                        isCaneled = false
+                        timer = Timer()
+                        timer.schedule(timerTask() {
+                            if (Scanflag)
                                 return@timerTask
-                            Scanflag=true
-                            UHfData.Inventory_6c(selectedEd,TidFlag)
-                            cHandler.removeMessages(MSG_UPDATE_LISTVIEW)
-                            cHandler.sendEmptyMessage(MSG_UPDATE_LISTVIEW)
-                            Scanflag=false
-                        },SCAN_INTERVAL)
-                        btn_Scan.text="停止"
-                    }
-                    else{
-                        isCaneled=true;
-                        if(this::timer.isInitialized) {
+                            Scanflag = true
+                            UHfData.Inventory_6c(selectedEd, TidFlag)
+                            mHandler.removeMessages(MSG_UPDATE_LISTVIEW)
+                            mHandler.sendEmptyMessage(MSG_UPDATE_LISTVIEW)
+                            Scanflag = false
+                        }, 0,SCAN_INTERVAL)
+                        btn_Scan.text = "停止"
+                    } else {
+                        isCaneled = true;
+                        if (this::timer.isInitialized) {
                             timer.cancel()
-                            btn_Scan.text="扫描"
+                            btn_Scan.text = "扫描"
                         }
                     }
-                }catch (e:Exception){
-                    Log.d("chenye",e.message.toString())
+                } catch (e: Exception) {
+                    Log.d("chenye", e.message.toString())
                 }
             }
 
         }
     }
-
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -157,6 +116,37 @@ class MainActivity : AppCompatActivity() , OnItemClickListener,View.OnClickListe
         setContentView(R.layout.activity_main)
 
         initView()
+
+        mHandler=object:Handler() {
+            override fun handleMessage(msg: Message) {
+                super.handleMessage(msg)
+                Log.d("chenye","a")
+                when(msg?.what) {
+                    MSG_UPDATE_LISTVIEW -> {
+                        if(isCaneled)
+                            return
+                        data = UHfData.lsTagList
+                        viewAdapter = ScanInfoAdapter(mainActivity, data, mainActivity)
+                        infoView.adapter = viewAdapter
+                        tv_count.text = "数量：" + viewAdapter.itemCount
+                        viewAdapter.notifyDataSetChanged()
+                        if (UHfData.mIsNew) {
+                            Thread {
+                                //to do play sound
+                            }
+                            UHfData.mIsNew = false
+                        }
+                    }
+                    MESSAGE_SUCCESS->{
+                        Toast.makeText(mainActivity, "Port Connect Success", Toast.LENGTH_LONG).show()
+                    }
+                    MESSAGE_FAIL->
+                        Toast.makeText(mainActivity, "Port Connect Failed", Toast.LENGTH_LONG).show()
+                    else -> {
+                    }
+                }
+            }
+        }
 
     }
 
@@ -174,7 +164,7 @@ class MainActivity : AppCompatActivity() , OnItemClickListener,View.OnClickListe
         infoView = findViewById(R.id.info_view)
         viewManager = LinearLayoutManager(this)
         infoView.layoutManager=viewManager
-        viewAdapter = ScanInfoAdapter(this, data,mainActivity)
+        viewAdapter = ScanInfoAdapter(this, data, mainActivity)
         infoView.adapter=viewAdapter
     }
 
@@ -195,13 +185,6 @@ class MainActivity : AppCompatActivity() , OnItemClickListener,View.OnClickListe
         }
     }
 
-//    inner class ClickCallback:OnClickCallback{
-//        override fun onClick(view: View, position: Map<Int,Any?>) {
-//            Log.d("chenye","click item")
-//            val tv_epc:TextView=view.findViewById(R.id.tv_epc)
-//            Toast.makeText(this@MainActivity,tv_epc.text,Toast.LENGTH_SHORT)
-//        }
-//    }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
         val inflater: MenuInflater = menuInflater
@@ -243,15 +226,12 @@ class MainActivity : AppCompatActivity() , OnItemClickListener,View.OnClickListe
 
     override fun onStart() {
         super.onStart()
-        var msg= Message()
         Thread{
             try {
-                var result=UHfData.UHfGetData.OpenUHf(serial, tty_speed)
-                msg.obj=result.toString()
+                mHandler.sendEmptyMessage(UHfData.UHfGetData.OpenUHf(serial, tty_speed))
             }catch (e: Exception) {
-                msg.obj=e
+                Log.d("chenye","OpenUHf Failed")
             }
-            mHandler.handleMessage(msg)
         }.start()
     }
 
@@ -264,7 +244,5 @@ class MainActivity : AppCompatActivity() , OnItemClickListener,View.OnClickListe
         super.onPause()
         cancelScan()
     }
-
-
 
 }
